@@ -20,18 +20,13 @@ module.exports = async function handler(req, res) {
     }
 
     const contact = data.data[0];
+    const inscriptionTimestamp = contact.custom_attributes?.inscription_date;
 
-    const baseTimestamp =
-      contact.custom_attributes?.inscription_date ||
-      contact.signed_up_at ||
-      contact.first_seen ||
-      contact.created_at;
-
-    if (!baseTimestamp) {
-      return res.status(500).json({ error: 'Impossible de déterminer une date de référence' });
+    if (!inscriptionTimestamp) {
+      return res.status(200).json({ eligible: false, reason: 'Date d\'inscription non renseignée' });
     }
 
-    const createdAt = new Date(baseTimestamp * 1000);
+    const createdAt = new Date(inscriptionTimestamp * 1000);
     const now = new Date();
     const daysSinceSignup = (now - createdAt) / (1000 * 60 * 60 * 24);
     const eligible = daysSinceSignup <= 30;
@@ -39,7 +34,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       eligible,
       debug: {
-        dateReference: createdAt.toISOString(),
+        inscriptionDate: createdAt.toISOString(),
         daysSinceSignup: Math.round(daysSinceSignup),
         name: contact.name || null
       }
