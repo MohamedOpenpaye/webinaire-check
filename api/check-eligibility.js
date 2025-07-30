@@ -20,10 +20,19 @@ module.exports = async function handler(req, res) {
     }
 
     const contact = data.data[0];
-    const inscriptionTimestamp = contact.custom_attributes?.inscription_date;
+
+    // 🧠 ⚠️ Nom exact du champ tel qu’il apparaît dans Intercom
+    const inscriptionTimestamp = contact.custom_attributes?.["Inscription date"];
 
     if (!inscriptionTimestamp) {
-      return res.status(200).json({ eligible: false, reason: 'Date d\'inscription non renseignée' });
+      return res.status(200).json({
+        eligible: false,
+        reason: "Date d'inscription non renseignée",
+        debug: {
+          custom_attributes: contact.custom_attributes,
+          available_keys: Object.keys(contact.custom_attributes || {})
+        }
+      });
     }
 
     const createdAt = new Date(inscriptionTimestamp * 1000);
@@ -34,6 +43,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       eligible,
       debug: {
+        usedKey: "Inscription date",
         inscriptionDate: createdAt.toISOString(),
         daysSinceSignup: Math.round(daysSinceSignup),
         name: contact.name || null
