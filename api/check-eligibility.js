@@ -15,26 +15,40 @@ module.exports = async function handler(req, res) {
 
     const data = await response.json();
 
-    if (!data || data.total_count === 0 || !data.data || !data.data[0]) {
-      return res.status(404).json({ eligible: false, reason: 'Email non trouvé' });
+    if (!data || data.total_count === 0 || !data.data || data.data.length === 0) {
+      return res.status(404).json({
+        eligible: false,
+        reason: 'Aucun contact trouvé avec cet email'
+      });
     }
 
-    const contact = data.data[0];
+    // 🔍 Ne garder que les contacts avec le rôle "user"
+    const contact = data.data
+      .filter(c => c.role === 'user')
+      .sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0))[0];
+
+    if (!contact) {
+      return res.status(404).json({
+        eligible: false,
+        reason: "Aucun 'user' trouvé pour cet email"
+      });
+    }
+
+    // 🧠 Lecture du champ personnalisé
     const timestamp = contact.custom_attributes?.inscription_date;
 
-    // cas 1 : champ manquant
     if (!timestamp) {
       return res.status(200).json({
         eligible: false,
-        reason: "Champ 'inscription_date' manquant",
+        reason: "Champ 'inscription_date' non défini pour ce contact",
         debug: {
+          contact_id: contact.id,
           custom_attributes: contact.custom_attributes,
           keys: Object.keys(contact.custom_attributes || {})
         }
       });
     }
 
-    // cas 2 : champ présent → calcul des jours
     const createdAt = new Date(timestamp * 1000);
     const now = new Date();
     const daysSinceSignup = (now - createdAt) / (1000 * 60 * 60 * 24);
@@ -42,16 +56,24 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       eligible,
-      reason: eligible ? "Inscrit depuis moins de 30 jours" : "Utilisateur trop ancien",
+      reason: eligible
+        ? "Utilisateur inscrit depuis moins de 30 jours"
+        : "Utilisateur inscrit depuis plus de 30 jours",
       debug: {
+        contact_id: contact.id,
+        name: contact.name || null,
+        email: contact.email || email,
         inscriptionDate: createdAt.toISOString(),
-        daysSinceSignup: Math.floor(daysSinceSignup),
-        name: contact.name || null
+        daysSinceSignup: Math.floor(daysSinceSignup)
       }
     });
 
   } catch (error) {
     console.error('Erreur Intercom API:', error);
-    return res.status(500).json({ error: 'Erreur interne', details: error.message });
+    return res.status(500).json({
+      error: 'Erreur interne',
+      details: error.message
+    });
   }
 };
+
