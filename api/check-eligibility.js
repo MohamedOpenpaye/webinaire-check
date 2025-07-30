@@ -20,32 +20,32 @@ module.exports = async function handler(req, res) {
     }
 
     const contact = data.data[0];
+    const timestamp = contact.custom_attributes?.inscription_date;
 
-    // 🧠 ⚠️ Nom exact du champ tel qu’il apparaît dans Intercom
-    const inscriptionTimestamp = contact.custom_attributes?.["Inscription date"];
-
-    if (!inscriptionTimestamp) {
+    // cas 1 : champ manquant
+    if (!timestamp) {
       return res.status(200).json({
         eligible: false,
-        reason: "Date d'inscription non renseignée",
+        reason: "Champ 'inscription_date' manquant",
         debug: {
           custom_attributes: contact.custom_attributes,
-          available_keys: Object.keys(contact.custom_attributes || {})
+          keys: Object.keys(contact.custom_attributes || {})
         }
       });
     }
 
-    const createdAt = new Date(inscriptionTimestamp * 1000);
+    // cas 2 : champ présent → calcul des jours
+    const createdAt = new Date(timestamp * 1000);
     const now = new Date();
     const daysSinceSignup = (now - createdAt) / (1000 * 60 * 60 * 24);
     const eligible = daysSinceSignup <= 30;
 
     return res.status(200).json({
       eligible,
+      reason: eligible ? "Inscrit depuis moins de 30 jours" : "Utilisateur trop ancien",
       debug: {
-        usedKey: "Inscription date",
         inscriptionDate: createdAt.toISOString(),
-        daysSinceSignup: Math.round(daysSinceSignup),
+        daysSinceSignup: Math.floor(daysSinceSignup),
         name: contact.name || null
       }
     });
