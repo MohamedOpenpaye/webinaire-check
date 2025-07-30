@@ -34,15 +34,16 @@ module.exports = async function handler(req, res) {
     }
 
     const contact = data.data[0];
-    const timestamp = contact.custom_attributes?.inscription_date;
+    const timestamp = contact.signed_up_at;
 
     if (!timestamp) {
       return res.status(200).json({
         eligible: false,
-        reason: "Champ 'inscription_date' manquant",
+        reason: "Champ 'signed_up_at' non défini",
         debug: {
           contact_id: contact.id,
-          custom_attributes: contact.custom_attributes
+          email: contact.email,
+          signed_up_at: timestamp
         }
       });
     }
@@ -60,7 +61,7 @@ module.exports = async function handler(req, res) {
       debug: {
         email,
         contact_id: contact.id,
-        inscriptionDate: createdAt.toISOString(),
+        signedUpAt: createdAt.toISOString(),
         daysSinceSignup: Math.floor(daysSinceSignup)
       }
     });
