@@ -1,6 +1,6 @@
-// 📁 /api/check-eligibility.js
+const fetch = require('node-fetch');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { email } = req.query;
 
   if (!email) {
@@ -17,27 +17,33 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    if (data.total_count === 0 || !data.data[0]) {
+    if (!data || data.total_count === 0 || !data.data || !data.data[0]) {
       return res.status(404).json({ eligible: false, reason: 'Email non trouvé' });
     }
 
     const contact = data.data[0];
-    const signedUpAt = contact.signed_up_at || contact.created_at; // fallback
+    const signedUpAt = contact.signed_up_at || contact.created_at;
 
     if (!signedUpAt) {
-      return res.status(500).json({ error: 'Impossible de déterminer la date d'inscription' });
+      return res.status(500).json({ error: 'Date d’inscription non trouvée dans le contact' });
     }
 
     const createdAt = new Date(signedUpAt * 1000);
     const now = new Date();
     const daysSinceSignup = (now - createdAt) / (1000 * 60 * 60 * 24);
-
     const eligible = daysSinceSignup <= 30;
 
-    return res.status(200).json({ eligible });
+    return res.status(200).json({
+      eligible,
+      debug: {
+        signedUpAt: createdAt.toISOString(),
+        daysSinceSignup: Math.round(daysSinceSignup),
+        name: contact.name || null
+      }
+    });
 
   } catch (error) {
     console.error('Erreur Intercom API:', error);
-    return res.status(500).json({ error: 'Erreur Interne' });
+    return res.status(500).json({ error: 'Erreur interne', details: error.message });
   }
-}
+};
