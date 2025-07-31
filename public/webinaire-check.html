@@ -53,11 +53,14 @@
         const data = await res.json();
 
         if (data.eligible) {
-          result.textContent = "✅ Accès autorisé. Redirection...";
+          result.textContent = "✅ Accès autorisé. Chargement du contenu...";
           result.style.color = "green";
-          setTimeout(() => {
-            window.open("https://streamyard.com/watch/WUabXB9QGv6h", "_blank");
-          }, 1500);
+
+          // 🔥 Envoi d’un message à LearnWorlds pour afficher la section masquée
+          window.parent.postMessage(
+            { type: "afficher-section", sectionId: "section_1729871499679_376" },
+            "*"
+          );
         } else {
           result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
           result.style.color = "red";
