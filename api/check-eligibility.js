@@ -7,38 +7,67 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { email } = req.query;
+  const { email, visitorId } = req.query;
+  let finalEmail = email;
 
-  if (!email) {
-    return res.status(400).json({ error: "Email requis" });
+  // Si pas d'email → récupérer via Intercom Visitor ID
+  if (!finalEmail && visitorId) {
+    try {
+      const response = await fetch(`https://api.intercom.io/contacts`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.INTERCOM_TOKEN}`,
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query: {
+            operator: "AND",
+            value: [
+              { field: "external_id", operator: "=", value: visitorId },
+              { field: "role", operator: "=", value: "user" }
+            ]
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (data?.data?.length > 0) {
+        finalEmail = data.data[0].email;
+      }
+    } catch (error) {
+      console.error("Erreur récupération email via Intercom ID:", error);
+    }
+  }
+
+  if (!finalEmail) {
+    return res.status(400).json({ eligible: false, reason: "Email introuvable" });
   }
 
   try {
+    // Recherche classique par email dans Intercom
     const searchResponse = await fetch("https://api.intercom.io/contacts/search", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.INTERCOM_TOKEN}`,
         Accept: "application/json",
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         query: {
           operator: "AND",
           value: [
-            { field: "email", operator: "=", value: email },
-            { field: "role", operator: "=", value: "user" },
-          ],
-        },
-      }),
+            { field: "email", operator: "=", value: finalEmail },
+            { field: "role", operator: "=", value: "user" }
+          ]
+        }
+      })
     });
 
     const data = await searchResponse.json();
 
     if (!data || !data.data || data.data.length === 0) {
-      return res.status(404).json({
-        eligible: false,
-        reason: "Aucun user trouvé avec cet email",
-      });
+      return res.status(404).json({ eligible: false, reason: "Utilisateur non trouvé" });
     }
 
     const contact = data.data[0];
@@ -47,8 +76,8 @@ export default async function handler(req, res) {
     if (!timestamp) {
       return res.status(200).json({
         eligible: false,
-        reason: "Champ 'signed_up_at' non défini",
-        debug: { contact_id: contact.id, email: contact.email },
+        reason: "Date d'inscription non définie",
+        debug: { contact_id: contact.id, email: finalEmail }
       });
     }
 
@@ -61,17 +90,15 @@ export default async function handler(req, res) {
       eligible,
       reason: eligible ? "Inscrit depuis moins de 30 jours" : "Inscrit depuis plus de 30 jours",
       debug: {
-        email,
+        email: finalEmail,
         contact_id: contact.id,
         signedUpAt: createdAt.toISOString(),
-        daysSinceSignup: Math.floor(daysSinceSignup),
-      },
+        daysSinceSignup: Math.floor(daysSinceSignup)
+      }
     });
+
   } catch (error) {
     console.error("Erreur Intercom API:", error);
-    return res.status(500).json({
-      error: "Erreur interne",
-      details: error.message,
-    });
+    return res.status(500).json({ error: "Erreur serveur", details: error.message });
   }
 }
