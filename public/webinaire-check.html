@@ -30,33 +30,32 @@
 </head>
 <body>
   <h3>Accédez au webinaire</h3>
-  <p>Entrez votre email pour vérifier votre éligibilité :</p>
-  <input type="email" id="emailInput" placeholder="Votre email" />
-  <button onclick="verifierEligibilite()">Vérifier</button>
+  <p>Vérification de votre éligibilité en cours...</p>
   <p id="resultMessage"></p>
 
   <script>
     async function verifierEligibilite() {
-      const email = document.getElementById("emailInput").value.trim();
+      const visitorId = window.Intercom?.('getVisitorId');
       const result = document.getElementById("resultMessage");
-      result.textContent = "⏳ Vérification en cours...";
-      result.style.color = "#333";
 
-      if (!email) {
-        result.textContent = "❗ Veuillez entrer une adresse email.";
+      if (!visitorId) {
+        result.textContent = "❌ Impossible de récupérer votre identifiant Intercom.";
         result.style.color = "red";
         return;
       }
 
+      result.textContent = "⏳ Vérification en cours...";
+      result.style.color = "#333";
+
       try {
-        const res = await fetch(`https://webinaire-check.vercel.app/api/check-eligibility?email=${encodeURIComponent(email)}`);
+        const res = await fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`);
         const data = await res.json();
 
         if (data.eligible) {
           result.textContent = "✅ Accès autorisé. Chargement du contenu...";
           result.style.color = "green";
 
-          // 🔥 Envoi d’un message à LearnWorlds pour afficher la section masquée
+          // Débloquer la section LearnWorlds
           window.parent.postMessage(
             { type: "afficher-section", sectionId: "section_1729871499679_376" },
             "*"
@@ -67,10 +66,13 @@
         }
       } catch (err) {
         console.error("Erreur API :", err);
-        result.textContent = "❌ Erreur réseau. Veuillez réessayer.";
+        result.textContent = "❌ Erreur lors de la vérification.";
         result.style.color = "red";
       }
     }
+
+    // Auto-lancer la vérification à l’arrivée sur la page
+    document.addEventListener("DOMContentLoaded", verifierEligibilite);
   </script>
 </body>
 </html>
