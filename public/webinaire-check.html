@@ -33,48 +33,81 @@
   <p>Vérification de votre éligibilité en cours...</p>
   <p id="resultMessage"></p>
 
- <script>
-  function verifierEligibilite(visitorId) {
-    const result = document.getElementById("resultMessage");
+  <script>
+    // Test manuel avec ?email=...
+    const params = new URLSearchParams(window.location.search);
+    const emailParam = params.get("email");
 
-    if (!visitorId) {
-      result.textContent = "❌ Identifiant Intercom manquant.";
-      result.style.color = "red";
+    if (emailParam) {
+      const result = document.getElementById("resultMessage");
+      result.textContent = "⏳ Test avec l'email : " + emailParam;
+      result.style.color = "#333";
+
+      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?email=${encodeURIComponent(emailParam)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.eligible) {
+            result.textContent = "✅ Accès autorisé (test manuel)";
+            result.style.color = "green";
+            window.parent.postMessage({ type: "afficher-section", sectionId: "section_1729871499679_376" }, "*");
+          } else {
+            result.textContent = "❌ Non éligible (test manuel)";
+            result.style.color = "red";
+          }
+        })
+        .catch(err => {
+          console.error("Erreur API :", err);
+          result.textContent = "❌ Erreur réseau (test manuel)";
+          result.style.color = "red";
+        });
+
+      // Ne pas exécuter la logique Intercom
       return;
     }
 
-    result.textContent = "⏳ Vérification en cours...";
-    result.style.color = "#333";
+    // Fonction de vérification standard (via visitorId Intercom)
+    function verifierEligibilite(visitorId) {
+      const result = document.getElementById("resultMessage");
 
-    fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.eligible) {
-          result.textContent = "✅ Accès autorisé. Chargement du contenu...";
-          result.style.color = "green";
-          window.parent.postMessage({ type: "afficher-section", sectionId: "section_1729871499679_376" }, "*");
-        } else {
-          result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
-          result.style.color = "red";
-        }
-      })
-      .catch(err => {
-        console.error("Erreur API :", err);
-        result.textContent = "❌ Erreur lors de la vérification.";
+      if (!visitorId) {
+        result.textContent = "❌ Identifiant Intercom manquant.";
         result.style.color = "red";
-      });
-  }
+        return;
+      }
 
-  window.addEventListener("message", function (event) {
-    if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
-      verifierEligibilite(event.data.visitorId);
+      result.textContent = "⏳ Vérification en cours...";
+      result.style.color = "#333";
+
+      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.eligible) {
+            result.textContent = "✅ Accès autorisé. Chargement du contenu...";
+            result.style.color = "green";
+            window.parent.postMessage({ type: "afficher-section", sectionId: "section_1729871499679_376" }, "*");
+          } else {
+            result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
+            result.style.color = "red";
+          }
+        })
+        .catch(err => {
+          console.error("Erreur API :", err);
+          result.textContent = "❌ Erreur lors de la vérification.";
+          result.style.color = "red";
+        });
     }
-  });
 
-  document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("resultMessage").textContent = "⏳ En attente des données utilisateur...";
-  });
-</script>
+    // Réception depuis LearnWorlds (Intercom visitor ID)
+    window.addEventListener("message", function (event) {
+      if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
+        verifierEligibilite(event.data.visitorId);
+      }
+    });
 
+    // Message d’attente par défaut
+    document.addEventListener("DOMContentLoaded", function () {
+      document.getElementById("resultMessage").textContent = "⏳ En attente des données utilisateur...";
+    });
+  </script>
 </body>
 </html>
