@@ -33,53 +33,48 @@
   <p>Vérification de votre éligibilité en cours...</p>
   <p id="resultMessage"></p>
 
-  <script>
-    function verifierEligibilite(retryCount = 0) {
-      const result = document.getElementById("resultMessage");
+ <script>
+  function verifierEligibilite(visitorId) {
+    const result = document.getElementById("resultMessage");
 
-      const visitorId = window.Intercom?.('getVisitorId');
-
-      if (!visitorId) {
-        if (retryCount < 10) {
-          result.textContent = "⏳ Initialisation Intercom... (tentative " + (retryCount + 1) + ")";
-          result.style.color = "#666";
-          return setTimeout(() => verifierEligibilite(retryCount + 1), 1000);
-        } else {
-          result.textContent = "❌ Impossible de récupérer votre identifiant Intercom.";
-          result.style.color = "red";
-          return;
-        }
-      }
-
-      // ✅ visitorId récupéré
-      result.textContent = "⏳ Vérification en cours...";
-      result.style.color = "#333";
-
-      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.eligible) {
-            result.textContent = "✅ Accès autorisé. Chargement du contenu...";
-            result.style.color = "green";
-
-            // 🔓 Débloquer la section LearnWorlds
-            window.parent.postMessage(
-              { type: "afficher-section", sectionId: "section_1729871499679_376" },
-              "*"
-            );
-          } else {
-            result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
-            result.style.color = "red";
-          }
-        })
-        .catch(err => {
-          console.error("Erreur API :", err);
-          result.textContent = "❌ Erreur lors de la vérification.";
-          result.style.color = "red";
-        });
+    if (!visitorId) {
+      result.textContent = "❌ Identifiant Intercom manquant.";
+      result.style.color = "red";
+      return;
     }
 
-    document.addEventListener("DOMContentLoaded", () => verifierEligibilite());
-  </script>
+    result.textContent = "⏳ Vérification en cours...";
+    result.style.color = "#333";
+
+    fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.eligible) {
+          result.textContent = "✅ Accès autorisé. Chargement du contenu...";
+          result.style.color = "green";
+          window.parent.postMessage({ type: "afficher-section", sectionId: "section_1729871499679_376" }, "*");
+        } else {
+          result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
+          result.style.color = "red";
+        }
+      })
+      .catch(err => {
+        console.error("Erreur API :", err);
+        result.textContent = "❌ Erreur lors de la vérification.";
+        result.style.color = "red";
+      });
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
+      verifierEligibilite(event.data.visitorId);
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("resultMessage").textContent = "⏳ En attente des données utilisateur...";
+  });
+</script>
+
 </body>
 </html>
