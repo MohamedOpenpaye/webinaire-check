@@ -22,72 +22,47 @@
 
   <script>
     const result = document.getElementById("resultMessage");
-    const params = new URLSearchParams(window.location.search);
-    const emailParam = params.get("email");
 
-    // --- PRIORITÉ : test manuel par email ---
-    if (emailParam) {
-      result.textContent = "⏳ Test avec l'email : " + emailParam;
+    function verifierEligibilite(visitorId) {
+      if (!visitorId) {
+        result.textContent = "❌ Identifiant Intercom manquant.";
+        result.style.color = "red";
+        return;
+      }
+
+      result.textContent = "⏳ Vérification en cours...";
       result.style.color = "#333";
 
-      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?email=${encodeURIComponent(emailParam)}`)
+      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
         .then(res => res.json())
         .then(data => {
           if (data.eligible) {
-            result.textContent = "✅ Accès autorisé (test manuel)";
+            result.textContent = "✅ Accès autorisé. Chargement du contenu...";
             result.style.color = "green";
             window.parent.postMessage({ type: "afficher-section", sectionId: "section_1729871499679_376" }, "*");
           } else {
-            result.textContent = "❌ Non éligible (test manuel)";
+            result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
             result.style.color = "red";
           }
         })
         .catch(err => {
           console.error("Erreur API :", err);
-          result.textContent = "❌ Erreur API (test manuel)";
+          result.textContent = "❌ Erreur lors de la vérification.";
           result.style.color = "red";
         });
-
-    } else {
-      // Sinon, attente du visitorId Intercom envoyé par LearnWorlds
-      result.textContent = "⏳ En attente des données utilisateur...";
-
-      function verifierEligibilite(visitorId) {
-        if (!visitorId) {
-          result.textContent = "❌ Identifiant Intercom manquant.";
-          result.style.color = "red";
-          return;
-        }
-
-        result.textContent = "⏳ Vérification en cours...";
-        result.style.color = "#333";
-
-        fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.eligible) {
-              result.textContent = "✅ Accès autorisé. Chargement du contenu...";
-              result.style.color = "green";
-              window.parent.postMessage({ type: "afficher-section", sectionId: "section_1729871499679_376" }, "*");
-            } else {
-              result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
-              result.style.color = "red";
-            }
-          })
-          .catch(err => {
-            console.error("Erreur API :", err);
-            result.textContent = "❌ Erreur lors de la vérification.";
-            result.style.color = "red";
-          });
-      }
-
-      // Réception du visitorId depuis LearnWorlds
-      window.addEventListener("message", function (event) {
-        if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
-          verifierEligibilite(event.data.visitorId);
-        }
-      });
     }
+
+    // Attente du visitorId envoyé par LearnWorlds
+    window.addEventListener("message", function (event) {
+      if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
+        verifierEligibilite(event.data.visitorId);
+      }
+    });
+
+    // Message d’attente par défaut
+    document.addEventListener("DOMContentLoaded", function () {
+      result.textContent = "⏳ En attente des données utilisateur...";
+    });
   </script>
 </body>
 </html>
