@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vérification d'éligibilité</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #0d6efd;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+    #resultMessage {
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h3>Accédez au webinaire</h3>
+  <p>Entrez votre email pour vérifier votre éligibilité :</p>
+  <input type="email" id="emailInput" placeholder="Votre email" />
+  <button onclick="verifierEligibilite()">Vérifier</button>
+  <p id="resultMessage"></p>
+
+  <script>
+    async function verifierEligibilite() {
+      const email = document.getElementById("emailInput").value.trim();
+      const result = document.getElementById("resultMessage");
+      result.textContent = "⏳ Vérification en cours...";
+      result.style.color = "#333";
+
+      if (!email) {
+        result.textContent = "❗ Veuillez entrer une adresse email.";
+        result.style.color = "red";
+        return;
+      }
+
+      try {
+        const res = await fetch(`https://webinaire-check.vercel.app/api/check-eligibility?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+
+        if (data.eligible) {
+          result.textContent = "✅ Accès autorisé. Redirection...";
+          result.style.color = "green";
+          setTimeout(() => {
+            window.location.href = "https://streamyard.com/watch/WUabXB9QGv6h";
+          }, 1500);
+        } else {
+          result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
+          result.style.color = "red";
+        }
+      } catch (err) {
+        console.error("Erreur API :", err);
+        result.textContent = "❌ Erreur réseau. Veuillez réessayer.";
+        result.style.color = "red";
+      }
+    }
+  </script>
+</body>
+</html>
