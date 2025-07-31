@@ -1,4 +1,14 @@
 module.exports = async function handler(req, res) {
+  // 🔒 Autoriser les appels depuis n'importe quel domaine
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // ✅ Gérer les requêtes OPTIONS pour éviter le blocage CORS préliminaire
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   const { email } = req.query;
 
   if (!email) {
@@ -40,11 +50,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         eligible: false,
         reason: "Champ 'signed_up_at' non défini",
-        debug: {
-          contact_id: contact.id,
-          email: contact.email,
-          signed_up_at: timestamp
-        }
+        debug: { contact_id: contact.id, email: contact.email }
       });
     }
 
@@ -65,7 +71,6 @@ module.exports = async function handler(req, res) {
         daysSinceSignup: Math.floor(daysSinceSignup)
       }
     });
-
   } catch (error) {
     console.error("Erreur Intercom API:", error);
     return res.status(500).json({
