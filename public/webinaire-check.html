@@ -34,45 +34,52 @@
   <p id="resultMessage"></p>
 
   <script>
-    async function verifierEligibilite() {
-      const visitorId = window.Intercom?.('getVisitorId');
+    function verifierEligibilite(retryCount = 0) {
       const result = document.getElementById("resultMessage");
 
+      const visitorId = window.Intercom?.('getVisitorId');
+
       if (!visitorId) {
-        result.textContent = "❌ Impossible de récupérer votre identifiant Intercom.";
-        result.style.color = "red";
-        return;
+        if (retryCount < 10) {
+          result.textContent = "⏳ Initialisation Intercom... (tentative " + (retryCount + 1) + ")";
+          result.style.color = "#666";
+          return setTimeout(() => verifierEligibilite(retryCount + 1), 1000);
+        } else {
+          result.textContent = "❌ Impossible de récupérer votre identifiant Intercom.";
+          result.style.color = "red";
+          return;
+        }
       }
 
+      // ✅ visitorId récupéré
       result.textContent = "⏳ Vérification en cours...";
       result.style.color = "#333";
 
-      try {
-        const res = await fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`);
-        const data = await res.json();
+      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.eligible) {
+            result.textContent = "✅ Accès autorisé. Chargement du contenu...";
+            result.style.color = "green";
 
-        if (data.eligible) {
-          result.textContent = "✅ Accès autorisé. Chargement du contenu...";
-          result.style.color = "green";
-
-          // Débloquer la section LearnWorlds
-          window.parent.postMessage(
-            { type: "afficher-section", sectionId: "section_1729871499679_376" },
-            "*"
-          );
-        } else {
-          result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
+            // 🔓 Débloquer la section LearnWorlds
+            window.parent.postMessage(
+              { type: "afficher-section", sectionId: "section_1729871499679_376" },
+              "*"
+            );
+          } else {
+            result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
+            result.style.color = "red";
+          }
+        })
+        .catch(err => {
+          console.error("Erreur API :", err);
+          result.textContent = "❌ Erreur lors de la vérification.";
           result.style.color = "red";
-        }
-      } catch (err) {
-        console.error("Erreur API :", err);
-        result.textContent = "❌ Erreur lors de la vérification.";
-        result.style.color = "red";
-      }
+        });
     }
 
-    // Auto-lancer la vérification à l’arrivée sur la page
-    document.addEventListener("DOMContentLoaded", verifierEligibilite);
+    document.addEventListener("DOMContentLoaded", () => verifierEligibilite());
   </script>
 </body>
 </html>
