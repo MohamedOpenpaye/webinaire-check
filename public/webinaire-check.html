@@ -6,72 +6,92 @@
   <style>
     body {
       font-family: sans-serif;
-      padding: 20px;
-      max-width: 400px;
-      margin: auto;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      display: flex;
+      justify-content: center;
     }
-    #resultMessage {
-      margin-top: 15px;
+
+    .container {
+      max-width: 600px;
+      width: 100%;
+      padding: 24px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+    }
+
+    #statusBox {
+      padding: 20px;
+      border-radius: 12px;
+      border: 2px solid #ccc;
+      font-size: 1.1rem;
+      background-color: #f9f9f9;
     }
   </style>
 </head>
 <body>
-  <div id="statusContainer" style="text-align: center; padding: 20px;">
-    <h2 style="margin-bottom: 10px;">🎓 Accès aux webinaires</h2>
-    <div id="statusBox" style="
-      border: 2px solid #ccc;
-      border-radius: 8px;
-      padding: 20px;
-      background-color: #f9f9f9;
-      font-size: 1rem;
-      color: #333;
-    ">
+  <div class="container">
+    <h2>🎓 Accès aux webinaires</h2>
+    <div id="statusBox">
       <p id="resultMessage">⏳ Vérification de votre éligibilité en cours...</p>
     </div>
   </div>
 
   <script>
     const result = document.getElementById("resultMessage");
+    const box = document.getElementById("statusBox");
 
     function verifierEligibilite(visitorId) {
       if (!visitorId) {
-        result.textContent = "❌ Identifiant Intercom manquant.";
-        result.style.color = "red";
+        result.innerHTML = "❌ <strong>Erreur :</strong> identifiant utilisateur manquant.";
+        box.style.borderColor = "#dc3545";
+        box.style.backgroundColor = "#ffe5e5";
         return;
       }
 
-      result.textContent = "⏳ Vérification en cours...";
-      result.style.color = "#333";
+      result.innerHTML = "⏳ Vérification de votre éligibilité en cours...";
+      box.style.borderColor = "#ffc107";
+      box.style.backgroundColor = "#fff8e1";
 
       fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
         .then(res => res.json())
         .then(data => {
           if (data.eligible) {
-            result.textContent = "✅ Accès autorisé. Chargement du contenu...";
-            result.style.color = "green";
+            result.innerHTML = "✅ <strong>Accès autorisé</strong> – chargement du contenu…";
+            box.style.borderColor = "#198754";
+            box.style.backgroundColor = "#e6f4ea";
             window.parent.postMessage({ type: "afficher-section", sectionId: "section_1729871499679_376" }, "*");
+            window.parent.postMessage({ type: "afficher-section", sectionId: "section_1726850479998_709" }, "*");
           } else {
-            result.textContent = "❌ Ce webinaire est réservé aux utilisateurs récents.";
-            result.style.color = "red";
+            result.innerHTML = "❌ <strong>Ce webinaire est réservé aux utilisateurs récents.</strong>";
+            box.style.borderColor = "#dc3545";
+            box.style.backgroundColor = "#ffe5e5";
           }
         })
         .catch(err => {
           console.error("Erreur API :", err);
-          result.textContent = "❌ Erreur lors de la vérification.";
-          result.style.color = "red";
+          result.innerHTML = "❌ Erreur de vérification.";
+          box.style.borderColor = "#dc3545";
+          box.style.backgroundColor = "#ffe5e5";
         });
     }
 
-    // Attente du visitorId envoyé par LearnWorlds
     window.addEventListener("message", function (event) {
       if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
         verifierEligibilite(event.data.visitorId);
       }
     });
 
-    // Message d’attente par défaut
     document.addEventListener("DOMContentLoaded", function () {
-      result.textContent = "⏳ En attente des données utilisateur...";
+      result.innerHTML = "⏳ En attente des données utilisateur...";
+      box.style.borderColor = "#ccc";
+      box.style.backgroundColor = "#f9f9f9";
     });
   </script>
 </body>
