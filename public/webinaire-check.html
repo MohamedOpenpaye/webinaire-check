@@ -70,7 +70,7 @@
           // Déclenche affichage des sections LW
           window.parent.postMessage({ type: "afficher-section" }, "*");
         } else {
-          result.innerHTML = "❌ <strong>Webinaire réservé aux clients inscrits depuis moins de 30 jours.</strong>";
+          result.innerHTML = "❌ <strong>Ce webinaire est réservé aux nouveaux clients Openpaye (utilisateurs inscrits depuis moins de 30 jours). Si c’est votre cas, inscrivez-vous à l’Academy en utilisant la même adresse e-mail que celle utilisée lors de votre inscription à Openpaye.</strong>";
           box.style.borderColor = "#dc3545";
           box.style.backgroundColor = "#ffe5e5";
         }
