@@ -44,55 +44,56 @@
   </div>
 
   <script>
-    const result = document.getElementById("resultMessage");
-    const box = document.getElementById("statusBox");
+  const result = document.getElementById("resultMessage");
+  const box = document.getElementById("statusBox");
 
-    function verifierEligibilite(visitorId) {
-      if (!visitorId) {
-        result.innerHTML = "❌ <strong>Erreur :</strong> identifiant utilisateur manquant.";
-        box.style.borderColor = "#dc3545";
-        box.style.backgroundColor = "#ffe5e5";
-        return;
-      }
-
-      result.innerHTML = "⏳ Vérification de votre éligibilité en cours...";
-      box.style.borderColor = "#ffc107";
-      box.style.backgroundColor = "#fff8e1";
-
-      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.eligible) {
-            result.innerHTML = "✅ <strong>Accès autorisé</strong> – chargement du contenu…";
-            box.style.borderColor = "#198754";
-            box.style.backgroundColor = "#e6f4ea";
-            window.parent.postMessage({ type: "afficher-section", sectionId: "section_1729871499679_376" }, "*");
-            window.parent.postMessage({ type: "afficher-section", sectionId: "section_1726850479998_709" }, "*");
-          } else {
-            result.innerHTML = "❌ <strong>Ce webinaire est réservé aux nouveaux clients Openpaye (utilisateurs inscrits depuis moins de 30 jours). Si c’est votre cas, inscrivez-vous à l’Academy en utilisant la même adresse e-mail que celle utilisée lors de votre inscription à Openpaye.</strong>";
-            box.style.borderColor = "#dc3545";
-            box.style.backgroundColor = "#ffe5e5";
-          }
-        })
-        .catch(err => {
-          console.error("Erreur API :", err);
-          result.innerHTML = "❌ Erreur de vérification.";
-          box.style.borderColor = "#dc3545";
-          box.style.backgroundColor = "#ffe5e5";
-        });
+  function verifierEligibilite(visitorId) {
+    if (!visitorId) {
+      result.innerHTML = "❌ <strong>Erreur :</strong> identifiant utilisateur introuvable (visitorId)";
+      box.style.borderColor = "#dc3545";
+      box.style.backgroundColor = "#ffe5e5";
+      return;
     }
 
-    window.addEventListener("message", function (event) {
-      if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
-        verifierEligibilite(event.data.visitorId);
-      }
-    });
+    result.innerHTML = "⏳ Vérification de votre éligibilité en cours...";
+    box.style.borderColor = "#ffc107";
+    box.style.backgroundColor = "#fff8e1";
 
-    document.addEventListener("DOMContentLoaded", function () {
-      result.innerHTML = "⏳ En attente des données utilisateur...";
-      box.style.borderColor = "#ccc";
-      box.style.backgroundColor = "#f9f9f9";
-    });
-  </script>
+    fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.eligible) {
+          result.innerHTML = "✅ <strong>Accès autorisé</strong> – chargement du contenu…";
+          box.style.borderColor = "#198754";
+          box.style.backgroundColor = "#e6f4ea";
+
+          // Déclenche affichage des sections LW
+          window.parent.postMessage({ type: "afficher-section" }, "*");
+        } else {
+          result.innerHTML = "❌ <strong>Webinaire réservé aux clients inscrits depuis moins de 30 jours.</strong>";
+          box.style.borderColor = "#dc3545";
+          box.style.backgroundColor = "#ffe5e5";
+        }
+      })
+      .catch(err => {
+        console.error("Erreur API :", err);
+        result.innerHTML = "❌ Erreur de vérification.";
+        box.style.borderColor = "#dc3545";
+        box.style.backgroundColor = "#ffe5e5";
+      });
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
+      verifierEligibilite(event.data.visitorId);
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    result.innerHTML = "⏳ En attente de votre session utilisateur (Intercom)...";
+    box.style.borderColor = "#ccc";
+    box.style.backgroundColor = "#f9f9f9";
+  });
+</script>
 </body>
 </html>
