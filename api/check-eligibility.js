@@ -84,7 +84,7 @@ export default async function handler(req, res) {
     const createdAt = new Date(timestamp * 1000);
     const now = new Date();
     const daysSinceSignup = (now - createdAt) / (1000 * 60 * 60 * 24);
-    const eligible = daysSinceSignup <= 30;
+    const eligible = daysSinceSignup <= 60;
 
     return res.status(200).json({
       eligible,
