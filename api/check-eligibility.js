@@ -28,7 +28,7 @@ export default async function handler(req, res) {
           query: {
             operator: "AND",
             value: [
-              { field: "external_id", operator: "=", value: visitorId },
+              { field: "id", operator: "=", value: visitorId },
               { field: "role", operator: "=", value: "user" }
             ]
           }
