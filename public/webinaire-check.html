@@ -55,25 +55,28 @@
     const box = document.getElementById("statusBox");
     const emailUsed = document.getElementById("emailUsed");
 
-    function verifierEligibilite(visitorId) {
-      if (!visitorId) {
-        result.innerHTML = "❌ <strong>Erreur :</strong> identifiant utilisateur introuvable (visitorId)";
+    function verifierEligibilite(visitorId, email) {
+      if (!visitorId && !email) {
+        result.innerHTML = "❌ <strong>Erreur :</strong> identifiant utilisateur introuvable";
         box.style.borderColor = "#dc3545";
         box.style.backgroundColor = "#ffe5e5";
         emailUsed.innerText = "";
         return;
       }
 
-      result.innerHTML = "⏳ Vérification de votre éligibilité en cours...";
+      result.innerHTML = "⏳ Vérification en cours...";
       box.style.borderColor = "#ffc107";
       box.style.backgroundColor = "#fff8e1";
 
-      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
+      const params = new URLSearchParams();
+      if (visitorId) params.append("visitorId", visitorId);
+      if (email) params.append("email", email);
+
+      fetch(`https://webinaire-check.vercel.app/api/check-eligibility?${params.toString()}`)
         .then(res => res.json())
         .then(data => {
           console.log("🧠 Données API reçues :", data);
 
-          // Afficher l’email utilisé (si dispo)
           if (data?.debug?.email) {
             emailUsed.innerText = `🔍 Email utilisé : ${data.debug.email}`;
           } else {
@@ -86,7 +89,7 @@
             box.style.backgroundColor = "#e6f4ea";
             window.parent.postMessage({ type: "afficher-section" }, "*");
           } else {
-            result.innerHTML = "❌ <strong>Ces webinaires sont réservés aux clients inscrits à Openpaye depuis moins de 2 mois. En vous connectant à l’Academy avec le bouton “Se connecter avec mon compte Openpaye”, l’accès se débloquera automatiquement si vous êtes éligible.</strong>";
+            result.innerHTML = "❌ <strong>Ces webinaires sont réservés aux clients récents (< 2 mois).</strong>";
             box.style.borderColor = "#dc3545";
             box.style.backgroundColor = "#ffe5e5";
           }
@@ -100,9 +103,11 @@
         });
     }
 
+    // 👇 On écoute le parent pour recevoir visitorId + email
     window.addEventListener("message", function (event) {
-      if (event.data && event.data.type === "fromParent" && event.data.visitorId) {
-        verifierEligibilite(event.data.visitorId);
+      if (event.data && event.data.type === "fromParent") {
+        const { visitorId, email } = event.data;
+        verifierEligibilite(visitorId, email);
       }
     });
 
