@@ -34,10 +34,11 @@
       background-color: #f9f9f9;
     }
 
-    #emailDebug {
-      font-size: 0.9rem;
-      margin-top: 12px;
-      color: #555;
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.95em;
     }
   </style>
 </head>
@@ -46,14 +47,12 @@
     <h2>🎓 Accès aux webinaires</h2>
     <div id="statusBox">
       <p id="resultMessage">⏳ Vérification de votre éligibilité en cours...</p>
-      <div id="emailDebug"></div>
     </div>
   </div>
 
   <script>
     const result = document.getElementById("resultMessage");
     const box = document.getElementById("statusBox");
-    const emailDebug = document.getElementById("emailDebug");
 
     function verifierEligibilite(visitorId) {
       if (!visitorId) {
@@ -70,20 +69,15 @@
       fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
         .then(res => res.json())
         .then(data => {
-          console.log("🧠 Données API reçues :", data);
-
-          const debugEmail = data?.debug?.email || "non trouvé";
-          emailDebug.innerHTML = `🔍 Email utilisé : <strong>${debugEmail}</strong>`;
+          const detectedEmail = data.debug?.email || "non trouvé";
 
           if (data.eligible) {
-            result.innerHTML = "✅ <strong>Accès autorisé</strong> – chargement du contenu…";
+            result.innerHTML = `✅ <strong>Accès autorisé</strong> – chargement du contenu…<br/><br/>🔍 Email détecté : <code>${detectedEmail}</code>`;
             box.style.borderColor = "#198754";
             box.style.backgroundColor = "#e6f4ea";
-
-            // Déclenche affichage des sections LW
             window.parent.postMessage({ type: "afficher-section" }, "*");
           } else {
-            result.innerHTML = "❌ <strong>Ces webinaires sont réservés aux clients inscrits à Openpaye depuis moins de 2 mois. En vous connectant à l’Academy avec le bouton “Se connecter avec mon compte Openpaye”, l’accès se débloquera automatiquement si vous êtes éligible.</strong>";
+            result.innerHTML = `❌ <strong>Ces webinaires sont réservés aux clients inscrits à Openpaye depuis moins de 2 mois.</strong><br/><br/>🔍 Email détecté : <code>${detectedEmail}</code>`;
             box.style.borderColor = "#dc3545";
             box.style.backgroundColor = "#ffe5e5";
           }
