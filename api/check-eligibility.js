@@ -9,11 +9,12 @@ export default async function handler(req, res) {
 
   const { email, visitorId } = req.query;
   let finalEmail = email;
+  let debugInfo = {};
 
-  // Si pas d'email → récupérer via Intercom Visitor ID
+  // Si pas d'email → essayer via visitorId (Intercom ID direct)
   if (!finalEmail && visitorId) {
     try {
-      const response = await fetch(`https://api.intercom.io/contacts`, {
+      const response = await fetch("https://api.intercom.io/contacts/search", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${process.env.INTERCOM_TOKEN}`,
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
           query: {
             operator: "AND",
             value: [
-              { field: "external_id", operator: "=", value: visitorId },
+              { field: "id", operator: "=", value: visitorId },
               { field: "role", operator: "=", value: "user" }
             ]
           }
@@ -34,18 +35,26 @@ export default async function handler(req, res) {
       const data = await response.json();
       if (data?.data?.length > 0) {
         finalEmail = data.data[0].email;
+        debugInfo = {
+          contact_id: data.data[0].id,
+          email: finalEmail
+        };
       }
     } catch (error) {
-      console.error("Erreur récupération email via Intercom ID:", error);
+      console.error("❌ Erreur récupération via Intercom ID :", error);
     }
   }
 
   if (!finalEmail) {
-    return res.status(400).json({ eligible: false, reason: "Email introuvable" });
+    return res.status(400).json({
+      eligible: false,
+      reason: "Email introuvable",
+      debug: debugInfo
+    });
   }
 
   try {
-    // Recherche classique par email dans Intercom
+    // Recherche par email dans Intercom
     const searchResponse = await fetch("https://api.intercom.io/contacts/search", {
       method: "POST",
       headers: {
@@ -67,7 +76,11 @@ export default async function handler(req, res) {
     const data = await searchResponse.json();
 
     if (!data || !data.data || data.data.length === 0) {
-      return res.status(404).json({ eligible: false, reason: "Utilisateur non trouvé" });
+      return res.status(404).json({
+        eligible: false,
+        reason: "Utilisateur non trouvé",
+        debug: { email: finalEmail }
+      });
     }
 
     const contact = data.data[0];
@@ -88,7 +101,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       eligible,
-      reason: eligible ? "Inscrit depuis moins de 30 jours" : "Inscrit depuis plus de 30 jours",
+      reason: eligible ? "Inscrit depuis moins de 60 jours" : "Inscrit depuis plus de 60 jours",
       debug: {
         email: finalEmail,
         contact_id: contact.id,
@@ -98,7 +111,10 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("Erreur Intercom API:", error);
-    return res.status(500).json({ error: "Erreur serveur", details: error.message });
+    console.error("❌ Erreur API Intercom :", error);
+    return res.status(500).json({
+      error: "Erreur serveur",
+      details: error.message
+    });
   }
 }
