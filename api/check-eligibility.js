@@ -9,12 +9,15 @@ export default async function handler(req, res) {
 
   const { email, visitorId } = req.query;
   let finalEmail = email;
-  let debugInfo = {};
 
-  // Si pas d'email → essayer via visitorId (Intercom ID direct)
+  console.log("📥 Reçu → email:", email, "| visitorId:", visitorId);
+
+  // 🧩 Si pas d'email, tenter via visitorId
   if (!finalEmail && visitorId) {
+    console.log("🔍 Recherche email via visitorId...");
+
     try {
-      const response = await fetch("https://api.intercom.io/contacts/search", {
+      const response = await fetch(`https://api.intercom.io/contacts/search`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${process.env.INTERCOM_TOKEN}`,
@@ -25,7 +28,7 @@ export default async function handler(req, res) {
           query: {
             operator: "AND",
             value: [
-              { field: "id", operator: "=", value: visitorId },
+              { field: "external_id", operator: "=", value: visitorId },
               { field: "role", operator: "=", value: "user" }
             ]
           }
@@ -33,28 +36,40 @@ export default async function handler(req, res) {
       });
 
       const data = await response.json();
+      console.log("📬 Résultat de recherche Intercom:", JSON.stringify(data, null, 2));
+
       if (data?.data?.length > 0) {
         finalEmail = data.data[0].email;
-        debugInfo = {
-          contact_id: data.data[0].id,
-          email: finalEmail
-        };
+        console.log("📧 Email trouvé via visitorId :", finalEmail);
+      } else {
+        return res.status(400).json({
+          eligible: false,
+          reason: "Email introuvable via visitorId",
+          debug: { visitorId }
+        });
       }
+
     } catch (error) {
-      console.error("❌ Erreur récupération via Intercom ID :", error);
+      console.error("❌ Erreur Intercom lors de la recherche visitorId :", error);
+      return res.status(500).json({
+        error: "Erreur serveur lors de la récupération de l'email depuis visitorId",
+        details: error.message
+      });
     }
   }
 
+  // ❌ Email toujours manquant ?
   if (!finalEmail) {
     return res.status(400).json({
       eligible: false,
       reason: "Email introuvable",
-      debug: debugInfo
+      debug: { visitorId }
     });
   }
 
   try {
-    // Recherche par email dans Intercom
+    console.log("🔍 Recherche du contact par email :", finalEmail);
+
     const searchResponse = await fetch("https://api.intercom.io/contacts/search", {
       method: "POST",
       headers: {
@@ -74,11 +89,12 @@ export default async function handler(req, res) {
     });
 
     const data = await searchResponse.json();
+    console.log("📬 Données retour email :", JSON.stringify(data, null, 2));
 
     if (!data || !data.data || data.data.length === 0) {
       return res.status(404).json({
         eligible: false,
-        reason: "Utilisateur non trouvé",
+        reason: "Utilisateur non trouvé par email",
         debug: { email: finalEmail }
       });
     }
@@ -90,7 +106,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         eligible: false,
         reason: "Date d'inscription non définie",
-        debug: { contact_id: contact.id, email: finalEmail }
+        debug: { email: finalEmail, contact_id: contact.id }
       });
     }
 
@@ -101,7 +117,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       eligible,
-      reason: eligible ? "Inscrit depuis moins de 60 jours" : "Inscrit depuis plus de 60 jours",
+      reason: eligible
+        ? "Inscrit depuis moins de 60 jours"
+        : "Inscrit depuis plus de 60 jours",
       debug: {
         email: finalEmail,
         contact_id: contact.id,
@@ -111,9 +129,9 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("❌ Erreur API Intercom :", error);
+    console.error("❌ Erreur recherche contact par email :", error);
     return res.status(500).json({
-      error: "Erreur serveur",
+      error: "Erreur serveur lors de la vérification d'éligibilité",
       details: error.message
     });
   }
