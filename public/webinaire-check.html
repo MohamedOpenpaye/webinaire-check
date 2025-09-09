@@ -34,11 +34,10 @@
       background-color: #f9f9f9;
     }
 
-    code {
-      background: #eee;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.95em;
+    #emailUsed {
+      margin-top: 12px;
+      font-size: 0.95rem;
+      color: #666;
     }
   </style>
 </head>
@@ -47,18 +46,21 @@
     <h2>🎓 Accès aux webinaires</h2>
     <div id="statusBox">
       <p id="resultMessage">⏳ Vérification de votre éligibilité en cours...</p>
+      <div id="emailUsed"></div>
     </div>
   </div>
 
   <script>
     const result = document.getElementById("resultMessage");
     const box = document.getElementById("statusBox");
+    const emailUsed = document.getElementById("emailUsed");
 
     function verifierEligibilite(visitorId) {
       if (!visitorId) {
         result.innerHTML = "❌ <strong>Erreur :</strong> identifiant utilisateur introuvable (visitorId)";
         box.style.borderColor = "#dc3545";
         box.style.backgroundColor = "#ffe5e5";
+        emailUsed.innerText = "";
         return;
       }
 
@@ -69,24 +71,32 @@
       fetch(`https://webinaire-check.vercel.app/api/check-eligibility?visitorId=${encodeURIComponent(visitorId)}`)
         .then(res => res.json())
         .then(data => {
-          const detectedEmail = data.debug?.email || "non trouvé";
+          console.log("🧠 Données API reçues :", data);
+
+          // Afficher l’email utilisé (si dispo)
+          if (data?.debug?.email) {
+            emailUsed.innerText = `🔍 Email utilisé : ${data.debug.email}`;
+          } else {
+            emailUsed.innerText = "🔍 Email utilisé : non trouvé";
+          }
 
           if (data.eligible) {
-            result.innerHTML = `✅ <strong>Accès autorisé</strong> – chargement du contenu…<br/><br/>🔍 Email détecté : <code>${detectedEmail}</code>`;
+            result.innerHTML = "✅ <strong>Accès autorisé</strong> – chargement du contenu…";
             box.style.borderColor = "#198754";
             box.style.backgroundColor = "#e6f4ea";
             window.parent.postMessage({ type: "afficher-section" }, "*");
           } else {
-            result.innerHTML = `❌ <strong>Ces webinaires sont réservés aux clients inscrits à Openpaye depuis moins de 2 mois.</strong><br/><br/>🔍 Email détecté : <code>${detectedEmail}</code>`;
+            result.innerHTML = "❌ <strong>Ces webinaires sont réservés aux clients inscrits à Openpaye depuis moins de 2 mois. En vous connectant à l’Academy avec le bouton “Se connecter avec mon compte Openpaye”, l’accès se débloquera automatiquement si vous êtes éligible.</strong>";
             box.style.borderColor = "#dc3545";
             box.style.backgroundColor = "#ffe5e5";
           }
         })
         .catch(err => {
-          console.error("Erreur API :", err);
+          console.error("❌ Erreur API :", err);
           result.innerHTML = "❌ Erreur de vérification.";
           box.style.borderColor = "#dc3545";
           box.style.backgroundColor = "#ffe5e5";
+          emailUsed.innerText = "";
         });
     }
 
